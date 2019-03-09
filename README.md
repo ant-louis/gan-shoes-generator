@@ -1,10 +1,26 @@
 # Shoes-generator
 
-## Create virtual environment
+## Create virtual environment  
 
 Install tensorflow and keras in a virtual environment using python 3.6  
 Use `tensorflow-gpu` if you plan on running it on a GPU  
 `conda create --name Deep python=3.6 numpy tensorflow keras`
+
+## Download dataset  
+<http://vision.cs.utexas.edu/projects/finegrained/utzap50k/ut-zap50k-images-square.zip>  
+Courtesy of A. Yu and K. Grauman and Mark Stephenson  
+
+Extract the zip at the root of this repository.
+Navigate to it : 
+```
+cd ut-zap50k-images-square
+```
+The images are in many subfolders, extract them all into a folder called 'all_images' that you
+create before:
+```
+mkdir all_images  
+find . -type f -print0 | xargs -0 mv -t all_images 
+```
 
 ## Project description
 Our main idea for this project is to use deep learning techniques to generate new unseen images from a model that has been trained on an image dataset.
