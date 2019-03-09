@@ -1,5 +1,11 @@
 # Shoes-generator
 
+## Create virtual environment
+
+Install tensorflow and keras in a virtual environment using python 3.6  
+Use `tensorflow-gpu` if you plan on running it on a GPU  
+`conda create --name Deep python=3.6 numpy tensorflow keras`
+
 ## Project description
 Our main idea for this project is to use deep learning techniques to generate new unseen images from a model that has been trained on an image dataset.
 For the scale of this project however, it is wise to restrict ourselves to one type of object rather than a multitude of different ones. Our preference lies on a shoe dataset, as the process of designing new shoes is essential in the huge shoe industry. 
