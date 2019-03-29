@@ -202,8 +202,6 @@ class SHOES_DCGAN(object):
         image_dir = 'ut-zap50k-images-square/all_images'
         image_names = ['ut-zap50k-images-square/all_images/{}'.format(i) for i in os.listdir(image_dir)]
         
-        # Shorten training set for troubleshooting
-
         if nb_samples < len(image_names):
             image_names = image_names[:nb_samples]
 
@@ -223,20 +221,29 @@ class SHOES_DCGAN(object):
         if save_interval>0:
             noise_input = np.random.uniform(-1.0, 1.0, size=[16, 100])
         for i in range(train_steps):
+            #Create batch
             images_train = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
+            
+            # Initialize noise and create image from generator
             noise = np.random.uniform(-1.0, 1.0, size=[batch_size, 100])
             images_fake = self.generator.predict(noise)
+            
+            # Input real and fake images to the discriminator and compute loss
             x = np.concatenate((images_train, images_fake))
             y = np.ones([2*batch_size, 1])
             y[batch_size:, :] = 0
             d_loss = self.discriminator.train_on_batch(x, y)
 
+
+            # Compute the loss 
             y = np.ones([batch_size, 1])
             noise = np.random.uniform(-1.0, 1.0, size=[batch_size, 100])
             a_loss = self.adversarial.train_on_batch(noise, y)
             log_mesg = "%d: [D loss: %f, acc: %f]" % (i, d_loss[0], d_loss[1])
             log_mesg = "%s  [A loss: %f, acc: %f]" % (log_mesg, a_loss[0], a_loss[1])
             print(log_mesg)
+
+            # Plot sample images during training
             if save_interval>0:
                 if (i+1)%save_interval==0:
                     self.plot_images(save2file=True, samples=noise_input.shape[0],\
@@ -270,7 +277,9 @@ class SHOES_DCGAN(object):
 
 
 if __name__ == '__main__':
-    nb_samples = 10000
+    # Shorten training set for troubleshooting
+    nb_samples = 1000
+
     Shoes_dcgan = SHOES_DCGAN(nb_samples)
     timer = ElapsedTimer()
     Shoes_dcgan.train(train_steps=10000, batch_size=32, save_interval=500)
