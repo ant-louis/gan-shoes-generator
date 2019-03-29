@@ -15,7 +15,6 @@ import cv2
 from matplotlib import pyplot as plt
 
 from keras.models import Sequential
-from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Reshape
 from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
 from keras.layers import LeakyReLU, Dropout
@@ -92,7 +91,7 @@ class DCGAN:
         self.D.add(Dense(1))
         self.D.add(Activation('sigmoid'))
 
-        # self.D.summary()
+        self.D.summary()
 
         return self.D
 
@@ -143,7 +142,7 @@ class DCGAN:
         # Out: 136 x 136 x 3 color image
         self.G.add(Conv2DTranspose(filters=3, kernel_size=5, padding='same'))
         self.G.add(Activation('sigmoid'))
-        # self.G.summary()
+        self.G.summary()
 
         return self.G
 
@@ -185,12 +184,12 @@ class DCGAN:
 
 class SHOES_DCGAN(object):
 
-    def __init__(self):
+    def __init__(self, nb_samples):
         self.img_rows = 136
         self.img_cols = 136
         self.channels = 3
 
-        self.x_train = self.createTS()
+        self.x_train = self.createTS(nb_samples)
         print("Training set size: ", self.x_train.shape)
 
         self.DCGAN = DCGAN()
@@ -198,16 +197,19 @@ class SHOES_DCGAN(object):
         self.adversarial = self.DCGAN.adversarial_model()
         self.generator = self.DCGAN.generator()
 
-    def createTS(self):
+    def createTS(self, nb_samples):
         print("Loading images ... \n")
         image_dir = 'ut-zap50k-images-square/all_images'
         image_names = ['ut-zap50k-images-square/all_images/{}'.format(i) for i in os.listdir(image_dir)]
         
-        #Shorten for testing
-        image_names = image_names[:1000]
+        # Shorten training set for troubleshooting
+
+        if nb_samples < len(image_names):
+            image_names = image_names[:nb_samples]
 
         images = np.zeros((len(image_names), self.img_rows, self.img_cols, self.channels), dtype=np.float32)
 
+        # Load images
         for n, image in enumerate(image_names):
             if n % 1000 == 0:
                 print('Loaded {} images out of {}'.format(n, len(image_names)))
@@ -268,9 +270,10 @@ class SHOES_DCGAN(object):
 
 
 if __name__ == '__main__':
-    Shoes_dcgan = SHOES_DCGAN()
+    nb_samples = 10000
+    Shoes_dcgan = SHOES_DCGAN(nb_samples)
     timer = ElapsedTimer()
-    Shoes_dcgan.train(train_steps=10000, batch_size=10, save_interval=500)
+    Shoes_dcgan.train(train_steps=10000, batch_size=32, save_interval=500)
     timer.elapsed_time()
     Shoes_dcgan.plot_images(fake=True)
-    Shoes_dcgan.plot_images(fake=False, save2file=True)
+    Shoes_dcgan.plot_images(fake=False, samples=4, save2file=True)
