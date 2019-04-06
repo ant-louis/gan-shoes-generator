@@ -49,16 +49,27 @@ def imagePreprocessing():
 
     input_directory = 'all_athletic'
     output_directory = 'training'
-
+    print("Pre-processing images")
     i = 0
     for img in glob.glob("{}/*.jpg".format(input_directory)):
         try:
             shoe = cv2.imread(img)
             shoe = cv2.resize(shoe, (128, 128))
-            cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), shoe)
+
+            #Standardize image
+            mean, std = cv2.meanStdDev(shoe)
+            channel_0 = (shoe[:,:,0] - mean[0])/std[0]
+            channel_1 = (shoe[:,:,1] - mean[1])/std[1]
+            channel_2 = (shoe[:,:,2] - mean[2])/std[2]
+            std_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
+
+            cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), std_shoe)
+            
             i += 1
-            print(i)
+            if i%500 == 0:
+                print(i)
         except:
+            print("Passed: ",i)
             pass
 
 def crop_center(img,cropx,cropy):
@@ -172,7 +183,7 @@ class DCGAN:
         optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=6e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator())
-        self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
+        self.DM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
         return self.DM
 
@@ -185,7 +196,7 @@ class DCGAN:
         self.AM = Sequential()
         self.AM.add(self.generator())
         self.AM.add(self.discriminator())
-        self.AM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
+        self.AM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
         return self.AM
 
@@ -250,12 +261,13 @@ class SHOES_DCGAN(object):
                 return result
             
             # Tensorboard outputs graphs and other metrics
-            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/discriminator/step_{}".format(i),  
+            curr_time = time.time()
+            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/discriminator/step_{}".format(curr_time,i),  
                                         histogram_freq=0,
                                         batch_size=batch_size,
                                         write_graph=True,
                                         write_grads=True)
-            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/adversarial/step_{}".format(i),  
+            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/{}/adversarial/step_{}".format(curr_time, i),  
                                         histogram_freq=0,
                                         batch_size=batch_size,
                                         write_graph=True,
@@ -330,4 +342,6 @@ if __name__ == '__main__':
     Shoes_dcgan.train(train_steps=10000, batch_size=32, save_interval=1, show_samples=16)
     timer.elapsed_time()
 
+    # Preprocess images once, they are saved in directory 'training" 
+    # imagePreprocessing()
 
