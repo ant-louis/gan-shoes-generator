@@ -136,7 +136,7 @@ class DCGAN:
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/2), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
-        # self.G.add(Dropout(rate=dropout_rate))
+        self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
 
         # In: 2*dim x 2*dim x depth/2
@@ -144,7 +144,7 @@ class DCGAN:
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/4), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
-        # self.G.add(Dropout(rate=dropout_rate))
+        self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
 
 
@@ -153,7 +153,7 @@ class DCGAN:
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/8), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
-        # self.G.add(Dropout(rate=dropout_rate))
+        self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
 
         # Out: 128 x 128 x 3 color image
@@ -169,7 +169,7 @@ class DCGAN:
         if self.DM:
             return self.DM
 
-        optimizer = RMSprop(lr=0.00008, clipvalue=1.0, decay=6e-8)
+        optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=6e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator())
         self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
@@ -181,7 +181,7 @@ class DCGAN:
         if self.AM:
             return self.AM
 
-        optimizer = RMSprop(lr=0.00004, clipvalue=1.0, decay=3e-8)
+        optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=3e-8)
         self.AM = Sequential()
         self.AM.add(self.generator())
         self.AM.add(self.discriminator())
@@ -236,7 +236,7 @@ class SHOES_DCGAN(object):
             #Create batch
             images_train = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
 
-            # Initialize noise and create image from generator
+            # Initialize noise and create fake image from generator
             mu, sigma = 0, 1
             noise = np.random.normal(mu, sigma, size=[batch_size, 100]) #Normal noise
             images_fake = self.generator.predict(noise)
@@ -269,7 +269,7 @@ class SHOES_DCGAN(object):
             # y = [1 1 1 1...1 -1 -1 -1 ... -1]
             #     Real         Fake
             y = np.ones([2*batch_size, 1])
-            y[batch_size:, :] = -1   
+            y[batch_size:, :] = -1
             discriminator_logs = self.discriminator.train_on_batch(x, y)
 
             # Train combined network
