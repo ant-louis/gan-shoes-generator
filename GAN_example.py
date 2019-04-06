@@ -266,10 +266,10 @@ class SHOES_DCGAN(object):
             # Train discriminator
             # Input real and fake images to the discriminator and compute loss
             x = np.concatenate((images_train, images_fake))
-            # y = [1 1 1 1...1 -1 -1 -1 ... -1]
+            # y = [-1 -1 -1 -1...1 1 1 1 ... 1]
             #     Real         Fake
             y = np.ones([2*batch_size, 1])
-            y[batch_size:, :] = -1
+            y[:batch_size, :] = -1
             discriminator_logs = self.discriminator.train_on_batch(x, y)
 
             # Train combined network
