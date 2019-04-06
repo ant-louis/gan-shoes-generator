@@ -172,7 +172,7 @@ class DCGAN:
         optimizer = RMSprop(lr=0.00008, clipvalue=1.0, decay=6e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator())
-        self.DM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
         return self.DM
 
@@ -185,7 +185,7 @@ class DCGAN:
         self.AM = Sequential()
         self.AM.add(self.generator())
         self.AM.add(self.discriminator())
-        self.AM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        self.AM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
         return self.AM
 
@@ -237,7 +237,7 @@ class SHOES_DCGAN(object):
             images_train = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
 
             # Initialize noise and create image from generator
-            mu, sigma = 0, 0.5
+            mu, sigma = 0, 1
             noise = np.random.normal(mu, sigma, size=[batch_size, 100]) #Normal noise
             images_fake = self.generator.predict(noise)
 
@@ -266,16 +266,18 @@ class SHOES_DCGAN(object):
             # Train discriminator
             # Input real and fake images to the discriminator and compute loss
             x = np.concatenate((images_train, images_fake))
-            # y = [1 1 1 1...1 0 0 0... 0]
+            # y = [1 1 1 1...1 -1 -1 -1 ... -1]
             #     Real         Fake
             y = np.ones([2*batch_size, 1])
-            y[batch_size:, :] = 0   
+            y[batch_size:, :] = -1   
             discriminator_logs = self.discriminator.train_on_batch(x, y)
 
             # Train combined network
             y = np.ones([batch_size, 1])
             adversarial_logs = self.adversarial.train_on_batch(noise, y)
 
+            # # When training adversarial alone :
+            # print("{}: [A loss: {}, acc: {}]".format(i, adversarial_logs[0], adversarial_logs[1]))
 
             log_mesg = "%d: [D loss: %f, acc: %f]   [A loss: %f, acc: %f]" % (i, discriminator_logs[0], discriminator_logs[1], adversarial_logs[0], adversarial_logs[1])
             print(log_mesg)
