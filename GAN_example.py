@@ -24,6 +24,8 @@ from keras.optimizers import RMSprop
 
 from tensorflow import ConfigProto, Session
 from keras.backend import set_session
+from keras.callbacks import TensorBoard
+
 import keras.backend
 
 config = ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} ) 
@@ -134,15 +136,15 @@ class DCGAN:
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/2), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
+        # self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
-        self.G.add(Dropout(rate=dropout_rate))
 
         # In: 2*dim x 2*dim x depth/2
         # Out: 4*dim x 4*dim x depth/4
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/4), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(Dropout(rate=dropout_rate))
+        # self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
 
 
@@ -151,7 +153,7 @@ class DCGAN:
         self.G.add(UpSampling2D())
         self.G.add(Conv2DTranspose(filters=int(depth/8), kernel_size=5, strides=2, padding='same'))
         self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(Dropout(rate=dropout_rate))
+        # self.G.add(Dropout(rate=dropout_rate))
         self.G.add(LeakyReLU(alpha=0.2))
 
         # Out: 128 x 128 x 3 color image
@@ -167,13 +169,7 @@ class DCGAN:
         if self.DM:
             return self.DM
 
-        #  ============== DISCRIMINATOR MODEL ==========================
-        # Since the output of the Discriminator is sigmoid, we use binary cross entropy for the loss. 
-        # RMSProp as optimizer generates more realistic fake images compared to Adam for this case. 
-        # Learning rate is 0.0008. Weight decay and clip value stabilize learning during the latter 
-        # part of the training. You have to adjust the decay if you adjust the learning rate.
-
-        optimizer = RMSprop(lr=0.0008, clipvalue=1.0, decay=6e-8)
+        optimizer = RMSprop(lr=0.00008, clipvalue=1.0, decay=6e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator())
         self.DM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
@@ -184,11 +180,8 @@ class DCGAN:
 
         if self.AM:
             return self.AM
-        #  ============== ADVERSARIAL MODEL ==========================
-        # The training parameters are the same as in the Discriminator model except 
-        # a reduced learning rate and corresponding weight decay.
 
-        optimizer = RMSprop(lr=0.0004, clipvalue=1.0, decay=3e-8)
+        optimizer = RMSprop(lr=0.00004, clipvalue=1.0, decay=3e-8)
         self.AM = Sequential()
         self.AM.add(self.generator())
         self.AM.add(self.discriminator())
@@ -244,34 +237,53 @@ class SHOES_DCGAN(object):
             images_train = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
 
             # Initialize noise and create image from generator
-            mu, sigma = 0, 1
-            noise = np.random.normal(mu, sigma, size=[batch_size, 100])
+            mu, sigma = 0, 0.5
+            noise = np.random.normal(mu, sigma, size=[batch_size, 100]) #Normal noise
             images_fake = self.generator.predict(noise)
-            
-            # # Crop 256x256 images to 135x102
-            # new_images = []
-            # for i in range(batch_size):
-            #     # new_images.append(crop_center(images_fake[i,:,:,:], 135, 102))
-            #     new_images.append(images_fake[i,:,:,:])
 
-            # images_fake = np.array(new_images).reshape((batch_size,135,102,3))
-            # print(images_train.shape)
-            # print(images_fake.shape)
+            # Transform train_on_batch return value
+            # to dict expected by on_batch_end callback
+            def named_logs(model, logs):
+                result = {}
+                for name, value in zip(model.metrics_names, logs):
+                    result[name] = value
+                return result
             
+            # Tensorboard outputs graphs and other metrics
+            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/discriminator/step_{}".format(i),  
+                                        histogram_freq=0,
+                                        batch_size=batch_size,
+                                        write_graph=True,
+                                        write_grads=True)
+            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/adversarial/step_{}".format(i),  
+                                        histogram_freq=0,
+                                        batch_size=batch_size,
+                                        write_graph=True,
+                                        write_grads=True)
+            tensorboard_discr.set_model(self.discriminator)
+            tensorboard_adver.set_model(self.adversarial)
+
+            # Train discriminator
             # Input real and fake images to the discriminator and compute loss
             x = np.concatenate((images_train, images_fake))
+            # y = [1 1 1 1...1 0 0 0... 0]
+            #     Real         Fake
             y = np.ones([2*batch_size, 1])
-            y[batch_size:, :] = 0
-            d_loss = self.discriminator.train_on_batch(x, y)
+            y[batch_size:, :] = 0   
+            discriminator_logs = self.discriminator.train_on_batch(x, y)
 
-
-            # Compute the loss 
+            # Train combined network
             y = np.ones([batch_size, 1])
-            a_loss = self.adversarial.train_on_batch(noise, y)
-            log_mesg = "%d: [D loss: %f, acc: %f]" % (i, d_loss[0], d_loss[1])
-            log_mesg = "%s  [A loss: %f, acc: %f]" % (log_mesg, a_loss[0], a_loss[1])
+            adversarial_logs = self.adversarial.train_on_batch(noise, y)
+
+
+            log_mesg = "%d: [D loss: %f, acc: %f]   [A loss: %f, acc: %f]" % (i, discriminator_logs[0], discriminator_logs[1], adversarial_logs[0], adversarial_logs[1])
             print(log_mesg)
 
+            # Graphs discriminator metrics using tensorboard
+            tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, discriminator_logs))
+            tensorboard_adver.on_epoch_end(i, named_logs(self.adversarial, adversarial_logs))
+            
             # Plot sample images during training
             if save_interval>0:
                 if (i+1)%save_interval==0:
