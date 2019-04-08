@@ -173,7 +173,7 @@ class DCGAN:
         if self.DM:
             return self.DM
 
-        optimizer = RMSprop(lr=0.00005, clipvalue=0.01)
+        optimizer = RMSprop(lr=0.00005)
         self.DM = Sequential()
         self.DM.add(self.discriminator)
         self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
@@ -186,7 +186,7 @@ class DCGAN:
         if self.AM:
             return self.AM
 
-        optimizer = RMSprop(lr=0.00005, clipvalue=0.01)
+        optimizer = RMSprop(lr=0.00005)
         self.AM = Sequential()
         self.AM.add(self.generator)
         # Fix discriminator weights in adversarial model
@@ -291,6 +291,15 @@ class SHOES_DCGAN(object):
             # Mean loss between fake and real
             discriminator_loss = 0.5 * (real_loss + fake_loss)
             discriminator_acc = 0.5 * (real_acc + fake_acc)
+
+            # Clip discriminator weights to satisfy Lipschitz constraint
+            clip_value = 0.01
+            for layer in self.discriminator.layers:
+                weights = layer.get_weights()
+                weights = [np.clip(weight,
+                                   -clip_value,
+                                   clip_value) for weight in weights]
+                layer.set_weights(weights)
 
             # Train generator (as discriminator weights are fixed)
             adversarial_loss, adversarial_acc = self.adversarial.train_on_batch(noise, real_labels)
