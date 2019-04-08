@@ -250,12 +250,12 @@ class SHOES_DCGAN(object):
                 return result
             
             # Tensorboard outputs graphs and other metrics
-            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/discriminator/step_{}".format(curr_time,i),  
+            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/logs/discriminator/step_{}".format(curr_time,i),  
                                         histogram_freq=0,
                                         batch_size=batch_size,
                                         write_graph=True,
                                         write_grads=True)
-            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/{}/adversarial/step_{}".format(curr_time, i),  
+            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/{}/logs/adversarial/step_{}".format(curr_time, i),  
                                         histogram_freq=0,
                                         batch_size=batch_size,
                                         write_graph=True,
@@ -302,12 +302,15 @@ class SHOES_DCGAN(object):
                     self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
 
     def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
-        filename = "logs_and_graphs/{}/figures/shoes_true_{}.png".format(time,step)
+        directory = "logs_and_graphs/figures/{}".format(time)
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+        filename = "logs_and_graphs/figures/{}/shoes_true_{}.png".format(time,step)
         if fake:
             # Default noise
             mu, sigma = 0, 1
             noise = np.random.normal(mu, sigma, size=[samples, 100])
-            filename = "logs_and_graphs/{}/figures/shoes_fake_{}.png".format(time,step)
+            filename = "logs_and_graphs/figures/{}/shoes_fake_{}.png".format(time,step)
 
             # Do the prediction
             images = self.generator.predict(noise)
