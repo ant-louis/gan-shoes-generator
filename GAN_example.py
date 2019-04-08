@@ -79,11 +79,15 @@ class DCGAN:
         self.IMROWS = 128
         self.IMCOLS = 128
         self.IMCHANNELS = 3
+
+        self.discriminator = self.build_discriminator()
+        self.generator = self.build_generator()
         self.AM = None  # adversarial model
         self.DM = None  # discriminator model
 
 
-    def discriminator(self):
+
+    def build_discriminator(self):
 
         discr = Sequential()
         depth = 32
@@ -110,12 +114,13 @@ class DCGAN:
         discr.add(Dense(1))
         discr.add(Activation('sigmoid'))
 
+        print("DISCRIMINATOR NETWORK SHAPE")
         discr.summary()
 
         return discr
 
 
-    def generator(self): 
+    def build_generator(self): 
 
         generator = Sequential()
         depth = 816
@@ -157,8 +162,9 @@ class DCGAN:
         # Out: 128 x 128 x 3 color image
         generator.add(Conv2DTranspose(filters=3, kernel_size=5, padding='same'))
         generator.add(Activation('tanh'))
-        generator.summary()
 
+        print("GENERATOR NETWORK SHAPE")
+        generator.summary()
         return generator
 
 
@@ -167,11 +173,12 @@ class DCGAN:
         if self.DM:
             return self.DM
 
-        optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=6e-8)
+        optimizer = RMSprop(lr=0.00005, clipvalue=0.01)
         self.DM = Sequential()
-        self.DM.add(self.discriminator())
+        self.DM.add(self.discriminator)
         self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
-
+        print("DISCRIMINATOR MODEL: ")
+        self.DM.summary()
         return self.DM
 
     def adversarial_model(self):
@@ -179,19 +186,20 @@ class DCGAN:
         if self.AM:
             return self.AM
 
-        optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=3e-8)
+        optimizer = RMSprop(lr=0.00005, clipvalue=0.01)
         self.AM = Sequential()
-        self.AM.add(self.generator())
+        self.AM.add(self.generator)
         # Fix discriminator weights in adversarial model
-        discriminator = self.discriminator()
-        discriminator.trainable = False
-        self.AM.add(discriminator)
+        self.discriminator.trainable = False
+        self.AM.add(self.discriminator)
         self.AM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
+        print("ADVERSARIAL MODEL: ")
+        self.AM.summary()
 
         return self.AM
 
     def wasserstein_loss(self, y_true, y_pred):
-        return - keras.backend.mean(y_true * y_pred)
+        return -keras.backend.mean(y_true * y_pred)
 
 
 class SHOES_DCGAN(object):
@@ -211,7 +219,7 @@ class SHOES_DCGAN(object):
         gan = DCGAN()
         self.discriminator =  gan.discriminator_model()
         self.adversarial = gan.adversarial_model()
-        self.generator = gan.generator()
+        self.generator = gan.generator
 
 
     def createTS(self, nb_samples):
@@ -278,7 +286,7 @@ class SHOES_DCGAN(object):
 
             # Train discriminator
             real_loss, real_acc = self.discriminator.train_on_batch(real_images, real_labels)
-            fake_loss, fake_acc = self.discriminator.train_on_batch(fake_images, - real_labels)
+            fake_loss, fake_acc = self.discriminator.train_on_batch(fake_images, -real_labels)
 
             # Mean loss between fake and real
             discriminator_loss = 0.5 * (real_loss + fake_loss)
