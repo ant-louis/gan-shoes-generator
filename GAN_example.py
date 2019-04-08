@@ -79,94 +79,87 @@ class DCGAN:
         self.IMROWS = 128
         self.IMCOLS = 128
         self.IMCHANNELS = 3
-        # self.train = self.createTS()
-        self.D = None   # discriminator
-        self.G = None   # generator
         self.AM = None  # adversarial model
         self.DM = None  # discriminator model
 
 
     def discriminator(self):
-        if self.D:
-            return self.D
 
-        self.D = Sequential()
+        discr = Sequential()
         depth = 32
 
         # In: 102 x 135 x 3, depth = 1
         input_shape = (self.IMROWS, self.IMCOLS, self.IMCHANNELS)
-        self.D.add(Conv2D(filters=depth*1, kernel_size=5, strides=2,data_format='channels_last', input_shape=input_shape, padding='same'))
-        self.D.add(LeakyReLU(alpha=0.2))
+        discr.add(Conv2D(filters=depth*1, kernel_size=5, strides=2,data_format='channels_last', input_shape=input_shape, padding='same'))
+        discr.add(LeakyReLU(alpha=0.2))
 
-        self.D.add(Conv2D(filters=depth*2, kernel_size=5, strides=2, padding='same'))
-        self.D.add(BatchNormalization(momentum=0.9))
-        self.D.add(LeakyReLU(alpha=0.2))
+        discr.add(Conv2D(filters=depth*2, kernel_size=5, strides=2, padding='same'))
+        discr.add(BatchNormalization(momentum=0.9))
+        discr.add(LeakyReLU(alpha=0.2))
 
-        self.D.add(Conv2D(filters=depth*4, kernel_size=5, strides=2, padding='same'))
-        self.D.add(BatchNormalization(momentum=0.9))
-        self.D.add(LeakyReLU(alpha=0.2))
+        discr.add(Conv2D(filters=depth*4, kernel_size=5, strides=2, padding='same'))
+        discr.add(BatchNormalization(momentum=0.9))
+        discr.add(LeakyReLU(alpha=0.2))
 
-        self.D.add(Conv2D(filters=depth*8, kernel_size=5, strides=2, padding='same'))
-        self.D.add(BatchNormalization(momentum=0.9))
-        self.D.add(LeakyReLU(alpha=0.2))
+        discr.add(Conv2D(filters=depth*8, kernel_size=5, strides=2, padding='same'))
+        discr.add(BatchNormalization(momentum=0.9))
+        discr.add(LeakyReLU(alpha=0.2))
 
         # Out: 1-dim probability
-        self.D.add(Flatten())
-        self.D.add(Dense(1))
-        self.D.add(Activation('sigmoid'))
+        discr.add(Flatten())
+        discr.add(Dense(1))
+        discr.add(Activation('sigmoid'))
 
-        self.D.summary()
+        discr.summary()
 
-        return self.D
+        return discr
 
 
     def generator(self): 
-        if self.G:
-            return self.G
 
-        self.G = Sequential()
+        generator = Sequential()
         depth = 816
         dim = 2
         dropout_rate = 0.5
 
         # In: 100 noise variables
         # Out: dim x dim x depth
-        self.G.add(Dense(dim*dim*depth, input_dim=100))
-        self.G.add(Reshape((dim, dim, depth)))
-        self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(LeakyReLU(alpha=0.2))
+        generator.add(Dense(dim*dim*depth, input_dim=100))
+        generator.add(Reshape((dim, dim, depth)))
+        generator.add(BatchNormalization(momentum=0.9))
+        generator.add(LeakyReLU(alpha=0.2))
 
         # In: dim x dim x depth
         # Out: 2*dim x 2*dim x depth/2
-        self.G.add(UpSampling2D())
-        self.G.add(Conv2DTranspose(filters=int(depth/2), kernel_size=5, strides=2, padding='same'))
-        self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(Dropout(rate=dropout_rate))
-        self.G.add(LeakyReLU(alpha=0.2))
+        generator.add(UpSampling2D())
+        generator.add(Conv2DTranspose(filters=int(depth/2), kernel_size=5, strides=2, padding='same'))
+        generator.add(BatchNormalization(momentum=0.9))
+        generator.add(Dropout(rate=dropout_rate))
+        generator.add(LeakyReLU(alpha=0.2))
 
         # In: 2*dim x 2*dim x depth/2
         # Out: 4*dim x 4*dim x depth/4
-        self.G.add(UpSampling2D())
-        self.G.add(Conv2DTranspose(filters=int(depth/4), kernel_size=5, strides=2, padding='same'))
-        self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(Dropout(rate=dropout_rate))
-        self.G.add(LeakyReLU(alpha=0.2))
+        generator.add(UpSampling2D())
+        generator.add(Conv2DTranspose(filters=int(depth/4), kernel_size=5, strides=2, padding='same'))
+        generator.add(BatchNormalization(momentum=0.9))
+        generator.add(Dropout(rate=dropout_rate))
+        generator.add(LeakyReLU(alpha=0.2))
 
 
         # In: 4*dim x 4*dim x depth/4
         # Out: 8*dim x 8*dim x depth/8
-        self.G.add(UpSampling2D())
-        self.G.add(Conv2DTranspose(filters=int(depth/8), kernel_size=5, strides=2, padding='same'))
-        self.G.add(BatchNormalization(momentum=0.9))
-        self.G.add(Dropout(rate=dropout_rate))
-        self.G.add(LeakyReLU(alpha=0.2))
+        generator.add(UpSampling2D())
+        generator.add(Conv2DTranspose(filters=int(depth/8), kernel_size=5, strides=2, padding='same'))
+        generator.add(BatchNormalization(momentum=0.9))
+        generator.add(Dropout(rate=dropout_rate))
+        generator.add(LeakyReLU(alpha=0.2))
 
         # Out: 128 x 128 x 3 color image
-        self.G.add(Conv2DTranspose(filters=3, kernel_size=5, padding='same'))
-        self.G.add(Activation('tanh'))
-        self.G.summary()
+        generator.add(Conv2DTranspose(filters=3, kernel_size=5, padding='same'))
+        generator.add(Activation('tanh'))
+        generator.summary()
 
-        return self.G
+        return generator
 
 
     def discriminator_model(self):
@@ -189,13 +182,16 @@ class DCGAN:
         optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=3e-8)
         self.AM = Sequential()
         self.AM.add(self.generator())
-        self.AM.add(self.discriminator())
+        # Fix discriminator weights in adversarial model
+        discriminator = self.discriminator()
+        discriminator.trainable = False
+        self.AM.add(discriminator)
         self.AM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
         return self.AM
 
     def wasserstein_loss(self, y_true, y_pred):
-        return keras.backend.mean(y_true * y_pred)
+        return - keras.backend.mean(y_true * y_pred)
 
 
 class SHOES_DCGAN(object):
@@ -205,13 +201,18 @@ class SHOES_DCGAN(object):
         self.img_cols = 128
         self.channels = 3
 
+        self.buildModel()
         self.x_train = self.createTS(nb_samples)
         print("Training set size: ", self.x_train.shape)
 
-        self.DCGAN = DCGAN()
-        self.discriminator =  self.DCGAN.discriminator_model()
-        self.adversarial = self.DCGAN.adversarial_model()
-        self.generator = self.DCGAN.generator()
+
+
+    def buildModel(self):
+        gan = DCGAN()
+        self.discriminator =  gan.discriminator_model()
+        self.adversarial = gan.adversarial_model()
+        self.generator = gan.generator()
+
 
     def createTS(self, nb_samples):
         print("Loading images ... \n")
