@@ -299,15 +299,15 @@ class SHOES_DCGAN(object):
             # Plot sample images during training
             if save_interval>0:
                 if (i+1)%save_interval==0:
-                    self.plot_images(fake=True, save2file=True, samples=show_samples, step=i)
+                    self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
 
-    def plot_images(self, save2file=False, fake=True, samples=16, step=0):
-        filename = "shoes_true_{}.png".format(step)
+    def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
+        filename = "logs_and_graphs/{}/figures/shoes_true_{}.png".format(time,step)
         if fake:
             # Default noise
             mu, sigma = 0, 1
             noise = np.random.normal(mu, sigma, size=[samples, 100])
-            filename = "shoes_fake_{}.png".format(step)
+            filename = "logs_and_graphs/{}/figures/shoes_fake_{}.png".format(time,step)
 
             # Do the prediction
             images = self.generator.predict(noise)
