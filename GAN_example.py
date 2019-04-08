@@ -56,14 +56,14 @@ def imagePreprocessing():
             shoe = cv2.imread(img)
             shoe = cv2.resize(shoe, (128, 128))
 
-            #Standardize image
+            #Normalize image
             mean, std = cv2.meanStdDev(shoe)
-            channel_0 = (shoe[:,:,0] - mean[0])/std[0]
-            channel_1 = (shoe[:,:,1] - mean[1])/std[1]
-            channel_2 = (shoe[:,:,2] - mean[2])/std[2]
-            std_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
+            channel_0 = shoe[:,:,0].astype('float32')/255
+            channel_1 = shoe[:,:,1].astype('float32')/255
+            channel_2 = shoe[:,:,2].astype('float32')/255
+            norm_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
 
-            cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), std_shoe)
+            cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), norm_shoe)
             
             i += 1
             if i%500 == 0:
@@ -71,12 +71,6 @@ def imagePreprocessing():
         except:
             print("Passed: ",i)
             pass
-
-def crop_center(img,cropx,cropy):
-    y,x,c = img.shape
-    startx = x//2 - cropx//2
-    starty = y//2 - cropy//2    
-    return img[starty:starty+cropy, startx:startx+cropx, :]
 
 
 class DCGAN:
@@ -183,7 +177,7 @@ class DCGAN:
         optimizer = RMSprop(lr=0.00005, clipvalue=0.01, decay=6e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator())
-        self.DM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        self.DM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
         return self.DM
 
@@ -196,7 +190,7 @@ class DCGAN:
         self.AM = Sequential()
         self.AM.add(self.generator())
         self.AM.add(self.discriminator())
-        self.AM.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        self.AM.compile(loss=self.wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
         return self.AM
 
@@ -243,14 +237,9 @@ class SHOES_DCGAN(object):
         return images
 
     def train(self, train_steps=2000, batch_size=256, save_interval=0, show_samples=16):
-        for i in range(train_steps):
-            #Create batch
-            images_train = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
+        curr_time = time.time()
 
-            # Initialize noise and create fake image from generator
-            mu, sigma = 0, 1
-            noise = np.random.normal(mu, sigma, size=[batch_size, 100]) #Normal noise
-            images_fake = self.generator.predict(noise)
+        for i in range(train_steps):
 
             # Transform train_on_batch return value
             # to dict expected by on_batch_end callback
@@ -261,7 +250,6 @@ class SHOES_DCGAN(object):
                 return result
             
             # Tensorboard outputs graphs and other metrics
-            curr_time = time.time()
             tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/discriminator/step_{}".format(curr_time,i),  
                                         histogram_freq=0,
                                         batch_size=batch_size,
@@ -275,28 +263,38 @@ class SHOES_DCGAN(object):
             tensorboard_discr.set_model(self.discriminator)
             tensorboard_adver.set_model(self.adversarial)
 
-            # Train discriminator
-            # Input real and fake images to the discriminator and compute loss
-            x = np.concatenate((images_train, images_fake))
-            # y = [-1 -1 -1 -1...1 1 1 1 ... 1]
-            #     Real         Fake
-            y = np.ones([2*batch_size, 1])
-            y[:batch_size, :] = -1
-            discriminator_logs = self.discriminator.train_on_batch(x, y)
 
-            # Train combined network
-            y = np.ones([batch_size, 1])
-            adversarial_logs = self.adversarial.train_on_batch(noise, y)
+            #Sample real images from training, creating a minibatch
+            real_images = self.x_train[np.random.randint(0, self.x_train.shape[0], size=batch_size), :, :, :]
+
+            real_labels = - np.ones((batch_size,1)) # -1
+            
+            # Initialize noise and create fake image from generator
+            mu, sigma = 0, 1
+            noise = np.random.normal(mu, sigma, size=[batch_size, 100]) #Normal noise
+            fake_images = self.generator.predict(noise)
+
+
+            # Train discriminator
+            real_loss, real_acc = self.discriminator.train_on_batch(real_images, real_labels)
+            fake_loss, fake_acc = self.discriminator.train_on_batch(fake_images, - real_labels)
+
+            # Mean loss between fake and real
+            discriminator_loss = 0.5 * (real_loss + fake_loss)
+            discriminator_acc = 0.5 * (real_acc + fake_acc)
+
+            # Train generator (as discriminator weights are fixed)
+            adversarial_loss, adversarial_acc = self.adversarial.train_on_batch(noise, real_labels)
 
             # # When training adversarial alone :
             # print("{}: [A loss: {}, acc: {}]".format(i, adversarial_logs[0], adversarial_logs[1]))
 
-            log_mesg = "%d: [D loss: %f, acc: %f]   [A loss: %f, acc: %f]" % (i, discriminator_logs[0], discriminator_logs[1], adversarial_logs[0], adversarial_logs[1])
+            log_mesg = "%d: [D loss: %f, acc: %f]   [A loss: %f, acc: %f]" % (i, discriminator_loss, discriminator_acc, adversarial_loss, adversarial_acc)
             print(log_mesg)
 
             # Graphs discriminator metrics using tensorboard
-            tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, discriminator_logs))
-            tensorboard_adver.on_epoch_end(i, named_logs(self.adversarial, adversarial_logs))
+            tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, [discriminator_loss, discriminator_acc]))
+            tensorboard_adver.on_epoch_end(i, named_logs(self.adversarial, [adversarial_loss, adversarial_acc]))
             
             # Plot sample images during training
             if save_interval>0:
@@ -323,6 +321,7 @@ class SHOES_DCGAN(object):
             plt.subplot(4, 4, i+1)
             image = images[i, :, :, :]
             image = np.reshape(image, [self.img_rows, self.img_cols, 3])
+            image = image * 255 # Rescale pixel values
             plt.imshow(image.astype(np.uint8))
             plt.axis('off')
         plt.tight_layout()
@@ -334,7 +333,7 @@ class SHOES_DCGAN(object):
 
 
 if __name__ == '__main__':
-    # # Shorten training set for troubleshooting
+    # Shorten training set for troubleshooting
     nb_samples = 10000
 
     Shoes_dcgan = SHOES_DCGAN(nb_samples)
@@ -342,6 +341,6 @@ if __name__ == '__main__':
     Shoes_dcgan.train(train_steps=10000, batch_size=32, save_interval=1, show_samples=16)
     timer.elapsed_time()
 
-    # Preprocess images once, they are saved in directory 'training" 
+    # # Preprocess images once, they are saved in directory 'training" 
     # imagePreprocessing()
 
