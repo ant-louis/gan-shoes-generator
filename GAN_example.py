@@ -2,7 +2,7 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 # The GPU id to use, usually either "0" or "1";
-os.environ["CUDA_VISIBLE_DEVICES"]="0
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # Just disables the warning for CPU instruction set,
 #  doesn't enable AVX/FMA
@@ -233,8 +233,8 @@ class SHOES_DCGAN(object):
 
     def createTS(self, nb_samples):
         print("Loading images ... \n")
-        image_dir = 'training' #For local
-        # image_dir = '/training' #For floydhub
+        # image_dir = 'training' #For local
+        image_dir = '/training' #For floydhub
         image_names = ['{}/{}'.format(image_dir, i) for i in os.listdir(image_dir)]
         
         if nb_samples is not None:
@@ -336,9 +336,11 @@ class SHOES_DCGAN(object):
                 if (i+1)%save_interval==0:
                     self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
 
-        modelname = 'my_generator.h5'
-        print("Saving generator model to disk as", modelname)
-        self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
+        # Saving generator every 500 iterations
+        if (i+1)%500==0:
+            modelname = 'my_generator_{}.h5'.format(i+1)
+            print("Saving generator model to disk as", modelname)
+            self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
 
     def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
         directory = "logs_and_graphs/{}/figures/".format(time)
@@ -374,8 +376,8 @@ class SHOES_DCGAN(object):
 if __name__ == '__main__':
     # Shorten training set for troubleshooting
     NB_SAMPLES = 10000
-    TRAINING_STEPS = 10
-    BATCH_SIZE = 32
+    TRAINING_STEPS = 2000
+    BATCH_SIZE = 256
     N_CRITIC = 5
     SAVE_INTERVAL = 10
     SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
