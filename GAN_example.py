@@ -1,8 +1,8 @@
 
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID";
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 # The GPU id to use, usually either "0" or "1";
-os.environ["CUDA_VISIBLE_DEVICES"]="0";  
+os.environ["CUDA_VISIBLE_DEVICES"]="0
 
 # Just disables the warning for CPU instruction set,
 #  doesn't enable AVX/FMA
@@ -25,8 +25,6 @@ from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
 from keras.layers import LeakyReLU, Dropout
 from keras.layers import BatchNormalization
 from keras.optimizers import RMSprop
-
-
 from keras.callbacks import TensorBoard
 
 
