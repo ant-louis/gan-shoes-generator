@@ -10,6 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import numpy as np
 import random
+import math
 import time
 import cv2
 import glob
@@ -350,7 +351,7 @@ class SHOES_DCGAN(object):
 
         plt.figure(figsize=(10,10))
         for i in range(images.shape[0]):
-            plt.subplot(4, 4, i+1)
+            plt.subplot(math.sqrt(samples), math.sqrt(samples), i+1)
             image = images[i, :, :, :]
             image = np.reshape(image, [self.img_rows, self.img_cols, 3])
             image = image * 255 # Rescale pixel values
@@ -370,7 +371,7 @@ if __name__ == '__main__':
     TRAINING_STEPS = 10000
     BATCH_SIZE = 32
     N_CRITIC = 5
-    SAVE_INTERVAL = 10
+    SAVE_INTERVAL = 1
     SHOW_SAMPLES = 4
 
     Shoes_dcgan = SHOES_DCGAN(NB_SAMPLES)
