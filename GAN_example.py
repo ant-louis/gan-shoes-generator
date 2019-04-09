@@ -16,6 +16,9 @@ import cv2
 import glob
 from matplotlib import pyplot as plt
 
+import tensorflow as tf
+import keras.backend as K
+
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Reshape
 from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
@@ -23,15 +26,13 @@ from keras.layers import LeakyReLU, Dropout
 from keras.layers import BatchNormalization
 from keras.optimizers import RMSprop
 
-from tensorflow import ConfigProto, Session
-from keras.backend import set_session
+
 from keras.callbacks import TensorBoard
 
-import keras.backend
 
-config = ConfigProto( device_count = {'GPU': 1 , 'CPU': 8} ) 
-sess = Session(config=config) 
-set_session(sess)
+config = tf.ConfigProto(device_count = {'GPU': 1 , 'CPU': 8}) 
+sess = tf.Session(config=config) 
+K.set_session(sess)
 
 class ElapsedTimer(object):
     def __init__(self):
@@ -209,7 +210,7 @@ class DCGAN:
         return self.AM
 
     def wasserstein_loss(self, y_true, y_pred):
-        return -keras.backend.mean(y_true * y_pred)
+        return -K.mean(y_true * y_pred)
 
 
 class SHOES_DCGAN(object):
@@ -234,7 +235,8 @@ class SHOES_DCGAN(object):
 
     def createTS(self, nb_samples):
         print("Loading images ... \n")
-        image_dir = 'training'
+        image_dir = 'training' #For local
+        # image_dir = '/training' #For floydhub
         image_names = ['{}/{}'.format(image_dir, i) for i in os.listdir(image_dir)]
         
         if nb_samples is not None:
@@ -299,9 +301,10 @@ class SHOES_DCGAN(object):
                 noise = np.random.standard_normal(size=[batch_size, 100]) #Normal noise
                 fake_images = self.generator.predict(noise)
 
-                # Train discriminator
-                real_loss, real_acc = self.discriminator.train_on_batch(real_images, real_labels)
-                fake_loss, fake_acc = self.discriminator.train_on_batch(fake_images, -real_labels)
+                with tf.device('/device:GPU:0'):
+                    # Train discriminator
+                    real_loss, real_acc = self.discriminator.train_on_batch(real_images, real_labels)
+                    fake_loss, fake_acc = self.discriminator.train_on_batch(fake_images, -real_labels)
 
                 # Mean loss between fake and real
                 discriminator_loss += 0.5 * (real_loss + fake_loss)
@@ -321,7 +324,8 @@ class SHOES_DCGAN(object):
 
             # Train generator (as discriminator weights are fixed)
             noise = np.random.standard_normal(size=[batch_size, 100]) #Normal noise
-            adversarial_loss, adversarial_acc = self.adversarial.train_on_batch(noise, real_labels)
+            with tf.device('/device:GPU:0'):
+                adversarial_loss, adversarial_acc = self.adversarial.train_on_batch(noise, real_labels)
 
             # Graphs discriminator metrics using tensorboard and log to console
             tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, [discriminator_loss, discriminator_acc]))
@@ -333,6 +337,10 @@ class SHOES_DCGAN(object):
             if save_interval>0:
                 if (i+1)%save_interval==0:
                     self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
+
+        modelname = 'my_generator.h5'
+        print("Saving generator model to disk as", modelname)
+        self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
 
     def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
         directory = "logs_and_graphs/{}/figures/".format(time)
@@ -368,11 +376,11 @@ class SHOES_DCGAN(object):
 if __name__ == '__main__':
     # Shorten training set for troubleshooting
     NB_SAMPLES = 10000
-    TRAINING_STEPS = 10000
+    TRAINING_STEPS = 10
     BATCH_SIZE = 32
     N_CRITIC = 5
-    SAVE_INTERVAL = 1
-    SHOW_SAMPLES = 4
+    SAVE_INTERVAL = 10
+    SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
 
     Shoes_dcgan = SHOES_DCGAN(NB_SAMPLES)
     timer = ElapsedTimer()
