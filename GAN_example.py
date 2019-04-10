@@ -45,34 +45,6 @@ class ElapsedTimer(object):
     def elapsed_time(self):
         print("Elapsed: %s " % self.elapsed(time.time() - self.start_time) )
 
-def imagePreprocessing():
-
-    input_directory = 'all_athletic'
-    output_directory = 'training'
-    print("Pre-processing images")
-    i = 0
-    for img in glob.glob("{}/*.jpg".format(input_directory)):
-        try:
-            shoe = cv2.imread(img)
-            shoe = cv2.resize(shoe, (128, 128))
-
-            #Normalize image between -1 and 1
-            mean, std = cv2.meanStdDev(shoe)
-            channel_0 = (shoe[:,:,0].astype('float32') - 255/2)/(255/2)
-            channel_1 = (shoe[:,:,1].astype('float32') - 255/2)/(255/2)
-            channel_2 = (shoe[:,:,2].astype('float32') - 255/2)/(255/2)
-            norm_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
-
-            cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), norm_shoe)
-            
-            i += 1
-            if i%500 == 0:
-                print(i)
-        except:
-            print("Passed: ",i)
-            pass
-
-
 class DCGAN:
 
     def __init__(self):
@@ -399,7 +371,4 @@ if __name__ == '__main__':
     timer = ElapsedTimer()
     Shoes_dcgan.train(TRAINING_STEPS, BATCH_SIZE, N_CRITIC, SAVE_INTERVAL, SHOW_SAMPLES)
     timer.elapsed_time()
-
-    # # Preprocess images once, they are saved in directory 'training" 
-    # imagePreprocessing()
 
