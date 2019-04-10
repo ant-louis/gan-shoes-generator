@@ -58,9 +58,9 @@ def imagePreprocessing():
 
             #Normalize image between -1 and 1
             mean, std = cv2.meanStdDev(shoe)
-            channel_0 = (shoe[:,:,0].astype('float32') - 255/2)/255
-            channel_1 = (shoe[:,:,1].astype('float32') - 255/2)/255
-            channel_2 = (shoe[:,:,2].astype('float32') - 255/2)/255
+            channel_0 = (shoe[:,:,0].astype('float32') - 255/2)/(255/2)
+            channel_1 = (shoe[:,:,1].astype('float32') - 255/2)/(255/2)
+            channel_2 = (shoe[:,:,2].astype('float32') - 255/2)/(255/2)
             norm_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
 
             cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), norm_shoe)
@@ -108,7 +108,6 @@ class DCGAN:
         discr.add(Conv2D(filters=depth*8, kernel_size=5, strides=2, padding='same'))
         discr.add(BatchNormalization(momentum=0.9))
         discr.add(LeakyReLU(alpha=0.2))
-RMSprop
         # Out: 1-dim probability
         discr.add(Flatten())
         discr.add(Dense(1))
@@ -233,26 +232,38 @@ class SHOES_DCGAN(object):
 
     def createTS(self, nb_samples):
         print("Loading images ... \n")
-        # image_dir = 'training' #For local
-        image_dir = '/training' #For floydhub
-        image_names = ['{}/{}'.format(image_dir, i) for i in os.listdir(image_dir)]
-        
-        if nb_samples is not None:
-            if nb_samples < len(image_names):
-                image_names = image_names[:nb_samples]
 
-        images = np.zeros((len(image_names), self.img_rows, self.img_cols, self.channels), dtype=np.float32)
+        images = np.zeros((nb_samples, self.img_rows, self.img_cols, self.channels), dtype=np.float32)
+        input_directory = 'all_athletic'
+        print("Pre-processing images...")
+        i = 0
 
-        # Load images
-        for n, image in enumerate(image_names):
-            if n % 1000 == 0:
-                print('Loaded {} images out of {}'.format(n, len(image_names)))
-                # plt.figure()
-                # plt.imshow(cv2.imread(image, cv2.IMREAD_COLOR))
-                # plt.show()
-            images[n] = cv2.imread(image, cv2.IMREAD_COLOR)
+        for img in glob.glob("{}/*.jpg".format(input_directory)):
+            try:
+                shoe = cv2.imread(img)
+                shoe = cv2.resize(shoe, (128, 128))
+                
+                #Normalize image between -1 and 1
+                channel_0 = (shoe[:,:,0].astype('float32') - 255/2)/(255/2)
+                channel_1 = (shoe[:,:,1].astype('float32') - 255/2)/(255/2)
+                channel_2 = (shoe[:,:,2].astype('float32') - 255/2)/(255/2)
+                norm_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
+                images[i,:,:,:]= norm_shoe
+            
+                i += 1
+                if i%500 == 0:
+                    print('Loaded {} images out of {}'.format(i, nb_samples))
+            except:
+                print("Passed: ",i)
+                pass
+                
+            if i == nb_samples:
+                break
 
-        # print("Image size: ", np.asarray(images[0]).shape)
+        # print("Image size: ",images[0,:,:,:].shape)
+        # print("Image example: ", images[0,:10,:10,0])
+        # print("Rescaled image", images[0,:10,:10,0] * 255/2 + 255/2)
+
         return images
 
     def train(self, train_steps=2000, batch_size=256, n_critic=5, save_interval=0, show_samples=16):
@@ -364,7 +375,7 @@ class SHOES_DCGAN(object):
             plt.subplot(math.sqrt(samples), math.sqrt(samples), i+1)
             image = images[i, :, :, :]
             image = np.reshape(image, [self.img_rows, self.img_cols, 3])
-            image = image * 255 # Rescale pixel values
+            image = image * 255/2 + 255/2  # Rescale pixel values
             plt.imshow(image.astype(np.uint8))
             plt.axis('off')
         plt.tight_layout()
@@ -379,7 +390,7 @@ if __name__ == '__main__':
     # Shorten training set for troubleshooting
     NB_SAMPLES = 10000
     TRAINING_STEPS = 3000
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     N_CRITIC = 5
     SAVE_INTERVAL = 10
     SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
