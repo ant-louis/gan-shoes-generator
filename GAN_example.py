@@ -56,11 +56,11 @@ def imagePreprocessing():
             shoe = cv2.imread(img)
             shoe = cv2.resize(shoe, (128, 128))
 
-            #Normalize image
+            #Normalize image between -1 and 1
             mean, std = cv2.meanStdDev(shoe)
-            channel_0 = shoe[:,:,0].astype('float32')/255
-            channel_1 = shoe[:,:,1].astype('float32')/255
-            channel_2 = shoe[:,:,2].astype('float32')/255
+            channel_0 = (shoe[:,:,0].astype('float32') - 255/2)/255
+            channel_1 = (shoe[:,:,1].astype('float32') - 255/2)/255
+            channel_2 = (shoe[:,:,2].astype('float32') - 255/2)/255
             norm_shoe = np.stack([channel_0, channel_1, channel_2], axis=-1)
 
             cv2.imwrite("{0}/img{1:0>5}.jpg".format(output_directory, i), norm_shoe)
@@ -108,7 +108,7 @@ class DCGAN:
         discr.add(Conv2D(filters=depth*8, kernel_size=5, strides=2, padding='same'))
         discr.add(BatchNormalization(momentum=0.9))
         discr.add(LeakyReLU(alpha=0.2))
-
+RMSprop
         # Out: 1-dim probability
         discr.add(Flatten())
         discr.add(Dense(1))
@@ -317,6 +317,7 @@ class SHOES_DCGAN(object):
                                     clip_value) for weight in weights]
                     layer.set_weights(weights)
 
+            # Take the average loss over the discriminator iterations
             discriminator_loss /= n_critic
             discriminator_acc /= n_critic
 
@@ -336,11 +337,12 @@ class SHOES_DCGAN(object):
                 if (i+1)%save_interval==0:
                     self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
 
-        # Saving generator every 500 iterations
-        if (i+1)%500==0:
-            modelname = 'my_generator_{}.h5'.format(i+1)
-            print("Saving generator model to disk as", modelname)
-            self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
+            # Saving generator every 100 iterations
+            if (i+1)%100==0:
+                modelname = 'my_generator_{}.h5'.format(i+1)
+                print("Saving generator model to disk as", modelname)
+                self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
+
 
     def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
         directory = "logs_and_graphs/{}/figures/".format(time)
@@ -376,8 +378,8 @@ class SHOES_DCGAN(object):
 if __name__ == '__main__':
     # Shorten training set for troubleshooting
     NB_SAMPLES = 10000
-    TRAINING_STEPS = 2000
-    BATCH_SIZE = 256
+    TRAINING_STEPS = 3000
+    BATCH_SIZE = 32
     N_CRITIC = 5
     SAVE_INTERVAL = 10
     SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
