@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import keras.backend as K
 
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Flatten, Reshape
 from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
 from keras.layers import LeakyReLU, Dropout
@@ -47,13 +47,17 @@ class ElapsedTimer(object):
 
 class DCGAN:
 
-    def __init__(self):
+    def __init__(self, generator_model):
         self.IMROWS = 128
         self.IMCOLS = 128
         self.IMCHANNELS = 3
 
         self.discriminator = self.build_discriminator()
-        self.generator = self.build_generator()
+        if generator_model is None:
+            self.generator = self.build_generator()
+        else:
+            print("Loading saved generator model")
+            self.generator = generator_model
         self.AM = None  # adversarial model
         self.DM = None  # discriminator model
 
@@ -174,8 +178,6 @@ class DCGAN:
 
         print("trainable gen weights after comp: ", len(self.AM._collected_trainable_weights))
 
-
-
         return self.AM
 
     def wasserstein_loss(self, y_true, y_pred):
@@ -184,19 +186,19 @@ class DCGAN:
 
 class SHOES_DCGAN(object):
 
-    def __init__(self, nb_samples=None):
+    def __init__(self, nb_samples=None, generator_model=None):
         self.img_rows = 128
         self.img_cols = 128
         self.channels = 3
 
-        self.buildModel()
+        self.buildModel(generator_model)
         self.x_train = self.createTS(nb_samples)
         print("Training set size: ", self.x_train.shape)
 
 
 
-    def buildModel(self):
-        gan = DCGAN()
+    def buildModel(self, generator_model):
+        gan = DCGAN(generator_model)
         self.discriminator =  gan.discriminator_model()
         self.adversarial = gan.adversarial_model()
         self.generator = gan.generator
@@ -322,7 +324,7 @@ class SHOES_DCGAN(object):
 
             # Saving generator every 100 iterations
             if (i+1)%100==0:
-                modelname = 'my_generator_{}.h5'.format(i+1)
+                modelname = 'models/my_generator_{}.h5'.format(i+1)
                 print("Saving generator model to disk as", modelname)
                 self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
 
@@ -363,11 +365,13 @@ if __name__ == '__main__':
     NB_SAMPLES = 10000
     TRAINING_STEPS = 3000
     BATCH_SIZE = 16
-    N_CRITIC = 5
+    N_CRITIC = 1
     SAVE_INTERVAL = 10
     SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
 
-    Shoes_dcgan = SHOES_DCGAN(NB_SAMPLES)
+    my_model = load_model('my_generator_400.h5')
+
+    Shoes_dcgan = SHOES_DCGAN(nb_samples=NB_SAMPLES, generator_model=my_model)
     timer = ElapsedTimer()
     Shoes_dcgan.train(TRAINING_STEPS, BATCH_SIZE, N_CRITIC, SAVE_INTERVAL, SHOW_SAMPLES)
     timer.elapsed_time()
