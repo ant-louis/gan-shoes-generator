@@ -148,7 +148,7 @@ class DCGAN:
         if self.DM:
             return self.DM
 
-        optimizer = RMSprop(lr=0.00005)
+        optimizer = RMSprop(lr=0.00005, decay=3e-8)
         self.DM = Sequential()
         self.DM.add(self.discriminator)
         print("trainable discr weights before comp: ", len(self.discriminator.trainable_weights))
@@ -164,7 +164,7 @@ class DCGAN:
         if self.AM:
             return self.AM
 
-        optimizer = RMSprop(lr=0.00005)
+        optimizer = RMSprop(lr=0.00005, decay=3e-8)
         self.AM = Sequential()
         self.AM.add(self.generator)
         print("trainable gen weights before comp: ", len(self.generator.trainable_weights))
@@ -257,19 +257,19 @@ class SHOES_DCGAN(object):
 
         for i in range(train_steps):
 
-            # Tensorboard outputs graphs and other metrics
-            tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/logs/discriminator/step_{}".format(curr_time,i),  
-                                        histogram_freq=0,
-                                        batch_size=batch_size,
-                                        write_graph=True,
-                                        write_grads=True)
-            tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/{}/logs/adversarial/step_{}".format(curr_time, i),  
-                                        histogram_freq=0,
-                                        batch_size=batch_size,
-                                        write_graph=True,
-                                        write_grads=True)
-            tensorboard_discr.set_model(self.discriminator)
-            tensorboard_adver.set_model(self.adversarial)
+            # # Tensorboard outputs graphs and other metrics
+            # tensorboard_discr = TensorBoard(log_dir="logs_and_graphs/{}/logs/discriminator/step_{}".format(curr_time,i),  
+            #                             histogram_freq=0,
+            #                             batch_size=batch_size,
+            #                             write_graph=True,
+            #                             write_grads=True)
+            # tensorboard_adver = TensorBoard(log_dir="logs_and_graphs/{}/logs/adversarial/step_{}".format(curr_time, i),  
+            #                             histogram_freq=0,
+            #                             batch_size=batch_size,
+            #                             write_graph=True,
+            #                             write_grads=True)
+            # tensorboard_discr.set_model(self.discriminator)
+            # tensorboard_adver.set_model(self.adversarial)
 
             discriminator_loss = 0
             discriminator_acc = 0
@@ -312,8 +312,8 @@ class SHOES_DCGAN(object):
                 adversarial_loss, adversarial_acc = self.adversarial.train_on_batch(noise, real_labels)
 
             # Graphs discriminator metrics using tensorboard and log to console
-            tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, [discriminator_loss, discriminator_acc]))
-            tensorboard_adver.on_epoch_end(i, named_logs(self.adversarial, [adversarial_loss, adversarial_acc]))
+            # tensorboard_discr.on_epoch_end(i, named_logs(self.discriminator, [discriminator_loss, discriminator_acc]))
+            # tensorboard_adver.on_epoch_end(i, named_logs(self.adversarial, [adversarial_loss, adversarial_acc]))
             log_mesg = "%d: [D loss: %f, acc: %f]   [A loss: %f, acc: %f]" % (i, discriminator_loss, discriminator_acc, adversarial_loss, adversarial_acc)
             print(log_mesg)
             
@@ -322,20 +322,20 @@ class SHOES_DCGAN(object):
                 if (i+1)%save_interval==0:
                     self.plot_images(fake=True, save2file=True, samples=show_samples, step=i, time = curr_time)
 
-            # Saving generator every 100 iterations
-            if (i+1)%100==0:
+            # Saving generator every 500 iterations
+            if (i+1)%500==0:
                 modelname = 'models/my_generator_{}.h5'.format(i+1)
                 print("Saving generator model to disk as", modelname)
                 self.generator.save(modelname)  # creates a HDF5 file 'my_model.h5'
 
 
     def plot_images(self, save2file=False, fake=True, samples=16, step=0, time=time.time()):
-        directory = "logs_and_graphs/{}/figures/".format(time)
+        directory = "figures/{}".format(time)
         if not os.path.exists(directory):
-            os.mkdir(directory)
-        filename = "logs_and_graphs/{}/figures/shoes_true_{}.png".format(time,step)
+            os.makedirs(directory)
+        filename = "figures/{}/shoes_true_{}.png".format(time,step)
         if fake:
-            filename = "logs_and_graphs/{}/figures/shoes_fake_{}.png".format(time,step)
+            filename = "figures/{}/shoes_fake_{}.png".format(time,step)
             # Generate noise and create new fake image
             noise = np.random.standard_normal(size=[samples, 100])
             images = self.generator.predict(noise)
@@ -357,21 +357,22 @@ class SHOES_DCGAN(object):
             plt.savefig(filename)
             plt.close('all')
         else:
+            plt.clf()
             plt.show()
 
 
 if __name__ == '__main__':
     # Shorten training set for troubleshooting
     NB_SAMPLES = 10000
-    TRAINING_STEPS = 3000
+    TRAINING_STEPS = 30000
     BATCH_SIZE = 16
-    N_CRITIC = 1
-    SAVE_INTERVAL = 10
+    N_CRITIC = 5
+    SAVE_INTERVAL = 100
     SHOW_SAMPLES = 4 # Squares only, e.g. 4 9 16 25 ..
 
-    my_model = load_model('my_generator_400.h5')
+    # my_model = load_model('models/my_generator_10000.h5')
 
-    Shoes_dcgan = SHOES_DCGAN(nb_samples=NB_SAMPLES, generator_model=my_model)
+    Shoes_dcgan = SHOES_DCGAN(nb_samples=NB_SAMPLES)
     timer = ElapsedTimer()
     Shoes_dcgan.train(TRAINING_STEPS, BATCH_SIZE, N_CRITIC, SAVE_INTERVAL, SHOW_SAMPLES)
     timer.elapsed_time()
