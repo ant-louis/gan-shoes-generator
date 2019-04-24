@@ -181,7 +181,6 @@ class CycleGAN():
 
         for epoch in range(epochs):
             for batch_i, (shoes, handbags) in enumerate(self.data_loader.load_batch(batch_size)):
-                print(batch_i)
                 # ------------- ---------
                 #  Train Discriminators
                 # ----------------------
@@ -216,15 +215,14 @@ class CycleGAN():
                 elapsed_time = datetime.datetime.now() - start_time
 
                 # Plot the progress
-                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s " \
+                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] " \
                                                                         % ( epoch, epochs,
                                                                             batch_i, self.data_loader.n_batches,
                                                                             d_loss[0], 100*d_loss[1],
                                                                             g_loss[0],
                                                                             np.mean(g_loss[1:3]),
                                                                             np.mean(g_loss[3:5]),
-                                                                            np.mean(g_loss[5:6]),
-                                                                            elapsed_time))
+                                                                            np.mean(g_loss[5:6])))
 
                 # If at save interval => save generated image samples
                 if batch_i % sample_interval == 0:
@@ -238,7 +236,6 @@ class CycleGAN():
 
 
         shoes, handbags = self.data_loader.load_data(nb_samples=1)
-        print(shoes.shape, handbags.shape)
 
         # Demo (for GIF)
         #shoes = self.data_loader.load_img('datasets/apple2orange/testA/n07740461_1541.jpg')
@@ -255,6 +252,7 @@ class CycleGAN():
 
         # Rescale images [-1, 1] to [0, 255]
         gen_imgs = gen_imgs * 255/2 + 255/2  # Rescale pixel values
+        gen_imgs = gen_imgs.astype(int)
 
         titles = ['Original', 'Translated', 'Reconstructed']
         r, c = 2, 3
@@ -272,4 +270,4 @@ class CycleGAN():
 
 if __name__ == '__main__':
     gan = CycleGAN()
-    gan.train(epochs=200, batch_size=1, sample_interval=200)
+    gan.train(epochs=200, batch_size=1, sample_interval=50)

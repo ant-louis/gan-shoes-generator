@@ -4,6 +4,7 @@
 
 import scipy
 import cv2
+from matplotlib import pyplot as plt
 from glob import glob
 import numpy as np
 
@@ -20,8 +21,8 @@ class DataLoader():
         shoes = np.zeros((nb_samples, self.img_res[0], self.img_res[1], 3), dtype=np.float32)
 
         for i in range(nb_samples):
-            handbag = handbag_path[i]
-            shoe = shoe_path[i]
+            handbag = handbag_path[i + 200] # 200th shoe/handbag because 1st are same color
+            shoe = shoe_path[i + 200]
 
             # Importing handbags
             try:
@@ -35,15 +36,19 @@ class DataLoader():
 
                 # handbag_edge = cv2.resize(handbag_edge, self.img_res)
                 handbags[i,:,:,:] = cv2.resize(handbag_img, self.img_res)
-            except:
+
+            except Exception as e:
                 print("Couldn't load handbag")
+                print(e)
+
             # Importing shoes
             try:
                 shoe_img = self.imread(shoe)
-                handbags[i,:,:,:] = cv2.resize(shoe_img, self.img_res)
-            except:
+                shoes[i,:,:,:] = cv2.resize(shoe_img, self.img_res)
+            except Exception as e:
                 print("Couldn't load shoe")
-                
+                print(e)
+
 
         # Normalizing arrays to [-1, 1]
         shoes_norm = (shoes - 255/2)/(255/2)
@@ -81,8 +86,10 @@ class DataLoader():
 
                     # handbag_edge = cv2.resize(handbag_edge, self.img_res)
                     handbags[k,:,:,:] = cv2.resize(handbag_img, self.img_res)
-                except:
-                    print("Couldn't load shoe")
+
+                except Exception as e:
+                    print("Couldn't load handbag")
+                    print(e)
 
             
             # Importing shoes
@@ -90,8 +97,10 @@ class DataLoader():
                 try:
                     shoe_img = self.imread(shoe)
                     shoes[k,:,:,:] = cv2.resize(shoe_img, self.img_res)
-                except:
+                except Exception as e:
                     print("Couldn't load shoe")
+                    print(e)
+
 
             # Normalizing arrays to [-1, 1]
             shoes_norm = (shoes- 255/2)/(255/2)
@@ -101,3 +110,7 @@ class DataLoader():
 
     def imread(self, path):
         return cv2.imread(path)
+
+if __name__=='__main__':
+    dl = DataLoader()
+    dl.load_data()
