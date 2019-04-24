@@ -21,7 +21,7 @@ class DataLoader():
         shoes = np.zeros((nb_samples, self.img_res[0], self.img_res[1], 3), dtype=np.float32)
 
         for i in range(nb_samples):
-            handbag = handbag_path[i + 200] # 200th shoe/handbag because 1st are same color
+            handbag = handbag_path[i + 100] # 100 shoe/handbag because 1st are same color
             shoe = shoe_path[i + 200]
 
             # Importing handbags
