@@ -223,26 +223,29 @@ class CycleGAN():
                 elapsed_time = datetime.datetime.now() - start_time
 
                 # Plot the progress
-                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] " \
+                log_msg = "[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] " \
                                                                         % ( epoch, epochs,
                                                                             batch_i, self.data_loader.n_batches,
                                                                             d_loss[0], 100*d_loss[1],
                                                                             g_loss[0],
                                                                             np.mean(g_loss[1:3]),
                                                                             np.mean(g_loss[3:5]),
-                                                                            np.mean(g_loss[5:6])))
+                                                                            np.mean(g_loss[5:6]))
+                print(log_msg)
+
+                with open('logs/{}_loss.log'.format(start_time), 'a') as f:
+                    f.writelines(log_msg)
 
                 # If at save interval => save generated image samples
                 if batch_i % img_sample_interval == 0:
                     self.sample_images(start_time, epoch, batch_i)
 
             # Saving generator every epoch
-
-            directory = "models"
+            directory = "models/{}/".format(start_time)
             if not os.path.exists(directory):
                 os.makedirs(directory)
-            modelname_AB = 'models/cyclegan_gAB_ep{}.h5'.format(epoch)
-            modelname_BA = 'models/cyclegan_gBA_ep{}.h5'.format(epoch)
+            modelname_AB = 'models/{}/cyclegan_gAB_ep{}.h5'.format(start_time, epoch)
+            modelname_BA = 'models/{}/cyclegan_gBA_ep{}.h5'.format(start_time, epoch)
             print("Saving generator models to disk as {} and {}".format(modelname_AB, modelname_BA))
             self.g_AB.save(modelname_AB)
             self.g_BA.save(modelname_BA)
