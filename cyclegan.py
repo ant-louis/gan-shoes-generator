@@ -16,7 +16,7 @@ from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model, load_model
 from keras.optimizers import Adam
 import datetime
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ import numpy as np
 import os
 
 class CycleGAN():
-    def __init__(self):
+    def __init__(self, g_AB=None, g_BA=None):
         # Input shape
         self.img_rows = 128
         self.img_cols = 128
@@ -66,8 +66,16 @@ class CycleGAN():
         #-------------------------
 
         # Build the generators
-        self.g_AB = self.build_generator()
-        self.g_BA = self.build_generator()
+        if g_AB is not None:
+            print("Resume training from ", g_AB)
+            self.g_AB = load_model(g_AB, custom_objects={'InstanceNormalization': InstanceNormalization})
+        else:
+            self.g_AB = self.build_generator()
+        if g_BA is not None:
+            print("Resume training from ", g_BA)
+            self.g_BA = load_model(g_BA, custom_objects={'InstanceNormalization': InstanceNormalization})
+        else:
+            self.g_BA = self.build_generator()
 
         # Input images from both domains
         shoe = Input(shape=self.img_shape)
@@ -171,7 +179,7 @@ class CycleGAN():
 
         return model
 
-    def train(self, epochs, batch_size=1, sample_interval=50):
+    def train(self, epochs, batch_size=1, img_sample_interval=50):
 
         start_time = datetime.datetime.now()
 
@@ -225,8 +233,19 @@ class CycleGAN():
                                                                             np.mean(g_loss[5:6])))
 
                 # If at save interval => save generated image samples
-                if batch_i % sample_interval == 0:
+                if batch_i % img_sample_interval == 0:
                     self.sample_images(start_time, epoch, batch_i)
+
+            # Saving generator every epoch
+
+            directory = "models"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            modelname_AB = 'models/cyclegan_gAB_ep{}.h5'.format(epoch)
+            modelname_BA = 'models/cyclegan_gBA_ep{}.h5'.format(epoch)
+            print("Saving generator models to disk as {} and {}".format(modelname_AB, modelname_BA))
+            self.g_AB.save(modelname_AB)
+            self.g_BA.save(modelname_BA)
 
     def sample_images(self, start_time, epoch, batch_i):
 
@@ -269,5 +288,14 @@ class CycleGAN():
 
 
 if __name__ == '__main__':
-    gan = CycleGAN()
-    gan.train(epochs=200, batch_size=1, sample_interval=50)
+
+    resume_training = True
+    modelname_AB = 'models/cyclegan_gAB_ep4.h5'
+    modelname_BA = 'models/cyclegan_gBA_ep4.h5'
+
+    if resume_training:
+        gan = CycleGAN(g_AB=modelname_AB, g_BA=modelname_BA)
+        gan.train(epochs=200, batch_size=1, img_sample_interval=500)
+    else:
+        gan = CycleGAN()
+        gan.train(epochs=200, batch_size=1, img_sample_interval=500)
