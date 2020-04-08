@@ -2,8 +2,7 @@
 
 ## Create virtual environment  
 
-Install tensorflow and keras in a virtual environment using python 3.6  
-Use `tensorflow-gpu` if you plan on running it on a GPU  
+Install tensorflow and keras in a virtual environment using python 3.6. Use `tensorflow-gpu` if you plan on running it on a GPU:  
 `conda create --name Deep python=3.6 numpy tensorflow keras`
 
 ## Download dataset  
